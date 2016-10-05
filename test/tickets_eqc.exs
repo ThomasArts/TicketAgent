@@ -16,6 +16,10 @@ defmodule TicketsEqc do
 	
 	def reset_post(_state, [_pid], result), do:	satisfy result == :ok
 
+  def reset_features(state, [_], result) do
+    [{:reset_at, state}]
+  end
+
 ## take command
 	def take_args(_state), do: [var: :pid] 
 
@@ -24,6 +28,14 @@ defmodule TicketsEqc do
 	def take_next(state, _var, [_pid]), do: state+1 
 	
 	def take_post(state, [_pid], result), do: satisfy result == state+1
+
+  def take_features(state, [_], _) do
+    if state == 10 do
+      [:have_taken_10_tickets]
+    else
+      []
+    end
+  end
 
 	weight state,
 	   take: 10,
@@ -35,8 +47,9 @@ defmodule TicketsEqc do
 			run_result =
 				run_commands(__MODULE__, cmds, [pid: agent])
 			SUT.stop(agent)
+      fs = :eqc_statem.call_features(run_result[:history])
 			pretty_commands(__MODULE__, cmds, run_result,
-        aggregate names: command_names(cmds) do
+        aggregate names: command_names(cmds), features: fs do
 					 run_result[:result] == :ok
          end)
 		end
